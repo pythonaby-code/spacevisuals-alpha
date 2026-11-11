@@ -1,0 +1,13 @@
+{
+  "name": "spacevisuals-alpha-site",
+  "version": "1.0.0-alpha.1",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node test-membership.mjs",
+    "build:pages": "node scripts/build-pages.mjs",
+    "check:publish": "node scripts/check-publish.mjs"
+  }
+}
