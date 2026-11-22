@@ -9,13 +9,16 @@ for(const name of ['style.css','sections.css','finish.css','membership.css','sit
 fs.cpSync(path.join(root,'dist/assets'),path.join(out,'assets'),{recursive:true});
 let html=fs.readFileSync(path.join(root,'dist/index.html'),'utf8');
 const publication=JSON.parse(fs.readFileSync(path.join(root,'alpha-publication.json'),'utf8'));
+const checksums=path.join(out,'downloads/checksums.json');
+fs.mkdirSync(path.dirname(checksums),{recursive:true});
 let release=null;
 if(publication.release){
   const {tag,file,sha256,bytes}=publication.release;
   if(!/^[a-z0-9][a-z0-9.-]+$/.test(tag)||!/^SpaceClient-Alpha-[a-zA-Z0-9.-]+\.zip$/.test(file)||!(/^[a-f0-9]{64}$/.test(sha256))||!Number.isSafeInteger(bytes)||bytes<=0)throw Error('Некорректные данные проверенного выпуска.');
   if(repository)release=`https://github.com/${repository}/releases/download/${tag}/${file}`;
-  fs.mkdirSync(path.join(out,'downloads'),{recursive:true});
-  fs.writeFileSync(path.join(out,'downloads/checksums.json'),JSON.stringify({file,sha256,bytes},null,2)+'\n');
+  fs.writeFileSync(checksums,JSON.stringify({file,sha256,bytes},null,2)+'\n');
+}else{
+  fs.writeFileSync(checksums,JSON.stringify({status:'suspended'},null,2)+'\n');
 }
 html=html.replace('<script src="promotion.js"></script>','');
 const downloadButton=/<a class="cta" href="downloads\/SpaceClient-Alpha-Windows\.zip" download>[\s\S]*?<\/a>/;
