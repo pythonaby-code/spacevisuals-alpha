@@ -7,13 +7,26 @@ if(repository&&!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository))throw Erro
 const out=path.join(root,'docs');fs.mkdirSync(out,{recursive:true});
 for(const name of ['style.css','sections.css','finish.css','membership.css','site.js','motion.js'])fs.copyFileSync(path.join(root,'dist',name),path.join(out,name));
 fs.cpSync(path.join(root,'dist/assets'),path.join(out,'assets'),{recursive:true});
-fs.mkdirSync(path.join(out,'downloads'),{recursive:true});fs.copyFileSync(path.join(root,'dist/downloads/checksums.json'),path.join(out,'downloads/checksums.json'));
 let html=fs.readFileSync(path.join(root,'dist/index.html'),'utf8');
-const release=repository?`https://github.com/${repository}/releases/download/alpha-client/SpaceClient-Alpha-Windows.zip`:null;
+const publication=JSON.parse(fs.readFileSync(path.join(root,'alpha-publication.json'),'utf8'));
+let release=null;
+if(publication.release){
+  const {tag,file,sha256,bytes}=publication.release;
+  if(!/^[a-z0-9][a-z0-9.-]+$/.test(tag)||!/^SpaceClient-Alpha-[a-zA-Z0-9.-]+\.zip$/.test(file)||!(/^[a-f0-9]{64}$/.test(sha256))||!Number.isSafeInteger(bytes)||bytes<=0)throw Error('Некорректные данные проверенного выпуска.');
+  if(repository)release=`https://github.com/${repository}/releases/download/${tag}/${file}`;
+  fs.mkdirSync(path.join(out,'downloads'),{recursive:true});
+  fs.writeFileSync(path.join(out,'downloads/checksums.json'),JSON.stringify({file,sha256,bytes},null,2)+'\n');
+}
 html=html.replace('<script src="promotion.js"></script>','');
-html=html.replace('href="downloads/SpaceClient-Alpha-Windows.zip" download',release?`href="${release}"`:'href="#download-status" aria-disabled="true"');
+const downloadButton=/<a class="cta" href="downloads\/SpaceClient-Alpha-Windows\.zip" download>[\s\S]*?<\/a>/;
+if(!downloadButton.test(html))throw Error('Кнопка загрузки отсутствует в шаблоне.');
+html=html.replace(downloadButton,release?`<a class="cta" href="${release}">Скачать исправленную Alpha для Windows</a>`:'');
+const notice=release?'Выпуск от 11 ноября 2026 снят с поддержки. Закройте игру и старый лаунчер, распакуйте новую сборку в отдельную папку и запустите SpaceClient.exe. Используйте прежнюю папку игры и тот же локальный аккаунт.':'Скачивание временно приостановлено. В выпуск от 11 ноября 2026 попали чужие функции автоматизации. Если у вас эта сборка, закройте игру и лаунчер. Сохраните папку игры, настройки и аккаунты. Здесь появится проверенная версия и инструкция по обновлению.';
+html=html.replace('<main>',`<main><section class="promotion-note" role="status" aria-label="Важное сообщение о SpaceVisuals Alpha" style="padding:1rem 5%;margin:0;font-size:1rem"><strong>${notice}</strong></section>`);
+if(!html.includes(notice))throw Error('В шаблон не добавлено предупреждение.');
 html=html.replace('<p id="promotion-note" class="promotion-note">Подарок первому скачавшему готовится к запуску.</p>','<p id="promotion-note" class="promotion-note">Акция с подарком Pro начнётся после запуска сервера аккаунтов. Скачивание этой версии сайта пока не участвует в акции.</p>');
-if(!release)html=html.replace('<p class="download-meta">','<p id="download-status" class="download-meta">Ссылка на выпуск клиента появится после публикации репозитория.<br>');
+if(!release)html=html.replace(/<p class="download-meta">[\s\S]*?<\/p>/,'<p class="download-meta">Загрузка приостановлена</p>').replace(/<a class="checksum"[^>]*>[\s\S]*?<\/a>/,'');
+if(html.includes('releases/download/alpha-client/')||html.includes('href="downloads/SpaceClient-Alpha-Windows.zip"'))throw Error('В шаблоне осталась ссылка на снятую сборку.');
 html=html.replace('Для управления аккаунтом открой раздел «Профиль».','Публичный сервер аккаунтов пока готовится. Локальный вход доступен при запуске серверной версии сайта.');
 fs.writeFileSync(path.join(out,'index.html'),html);
 let profile=fs.readFileSync(path.join(root,'dist/profile.html'),'utf8');
